@@ -1,0 +1,35 @@
+name: test
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  install:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, windows-11-arm]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install Scoop
+        shell: pwsh
+        run: |
+          Invoke-RestMethod -Uri https://get.scoop.sh -OutFile install-scoop.ps1
+          .\install-scoop.ps1 -RunAsAdmin
+          Join-Path (Resolve-Path ~).Path "scoop\shims" >> $env:GITHUB_PATH
+      - name: Install a-stack from this bucket
+        shell: pwsh
+        run: |
+          scoop install .\bucket\a-stack.json
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+      - name: Run it
+        shell: pwsh
+        run: |
+          $out = a-stack version
+          $out
+          if ($out -notmatch '"version":"v') { exit 1 }
